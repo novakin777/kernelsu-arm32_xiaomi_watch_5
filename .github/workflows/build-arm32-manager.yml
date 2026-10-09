@@ -1,6 +1,9 @@
 name: Build ARM32 KernelSU Manager
 
 on:
+  push:
+    branches:
+      - codex/blenny-arm32-sigsys-fix
   workflow_dispatch:
 
 permissions:
