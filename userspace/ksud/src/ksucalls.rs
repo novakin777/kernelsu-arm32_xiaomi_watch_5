@@ -51,6 +51,10 @@ extern "C" fn sigsys_handler(
         {
             (*ucontext).uc_mcontext.regs[0] = (-libc::EPERM) as u64;
         }
+        #[cfg(target_arch = "arm")]
+        {
+            (*ucontext).uc_mcontext.arm_r0 = (-libc::EPERM) as libc::c_ulong;
+        }
         #[cfg(target_arch = "x86_64")]
         {
             let rax = libc::REG_RAX as usize;
