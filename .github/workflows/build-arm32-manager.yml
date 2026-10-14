@@ -1,0 +1,164 @@
+name: Build ARM32 KernelSU Manager
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signing-identity:
+    runs-on: ubuntu-latest
+    outputs:
+      expected_size: ${{ steps.extract.outputs.expected_size }}
+      expected_hash: ${{ steps.extract.outputs.expected_hash }}
+    steps:
+      - name: Restore persistent signing identity
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.KSU_ARM32_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$SIGNING_KEYSTORE" | base64 -d > arm32-manager.jks
+          test -s arm32-manager.jks
+
+      - name: Extract persistent certificate identity
+        id: extract
+        env:
+          STORE_PASS: ${{ secrets.KSU_ARM32_STORE_PASSWORD }}
+        run: |
+          keytool -exportcert -alias arm32-manager -keystore arm32-manager.jks \
+            -storepass "$STORE_PASS" -file arm32-manager-cert.der
+          SIZE_DEC="$(stat -c%s arm32-manager-cert.der)"
+          SIZE_HEX="$(printf '0x%04x' "$SIZE_DEC")"
+          HASH="$(sha256sum arm32-manager-cert.der | awk '{print $1}')"
+          echo "expected_size=$SIZE_HEX" >> "$GITHUB_OUTPUT"
+          echo "expected_hash=$HASH" >> "$GITHUB_OUTPUT"
+
+  build-kmi-module:
+    uses: ./.github/workflows/ddk-lkm.yml
+    needs: signing-identity
+    with:
+      kmi: android15-6.6
+      expected_size2: ${{ needs.signing-identity.outputs.expected_size }}
+      expected_hash2: ${{ needs.signing-identity.outputs.expected_hash }}
+
+  build-arm32-manager:
+    needs: [signing-identity, build-kmi-module]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        run: |
+          rustup update stable
+          rustup target add armv7-linux-androideabi
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r29
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: userspace/ksud -> target
+          cache-targets: false
+
+      - name: Download ARM64 KMI module
+        uses: actions/download-artifact@v8
+        with:
+          name: aarch64-android15-6.6-lkm
+          path: /tmp/ksu-kmi
+
+      - name: Add module to ARM32 ksud assets
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          LLVM_READELF="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          test -s /tmp/ksu-kmi/android15-6.6_kernelsu.ko
+          "$LLVM_READELF" -h /tmp/ksu-kmi/android15-6.6_kernelsu.ko | grep 'Class:.*ELF64'
+          "$LLVM_READELF" -h /tmp/ksu-kmi/android15-6.6_kernelsu.ko | grep 'Machine:.*AArch64'
+          mkdir -p userspace/ksud/bin/arm
+          cp /tmp/ksu-kmi/android15-6.6_kernelsu.ko userspace/ksud/bin/arm/
+
+      - name: Restore persistent signing key
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.KSU_ARM32_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.KSU_ARM32_STORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KSU_ARM32_KEY_PASSWORD }}
+          EXPECTED_CERT_SIZE: ${{ needs.signing-identity.outputs.expected_size }}
+          EXPECTED_CERT_HASH: ${{ needs.signing-identity.outputs.expected_hash }}
+        working-directory: manager
+        run: |
+          printf '%s' "$SIGNING_KEYSTORE" | base64 -d > arm32-manager.jks
+          test -s arm32-manager.jks
+          {
+            echo "KEYSTORE_FILE=arm32-manager.jks"
+            echo "KEYSTORE_PASSWORD=$STORE_PASS"
+            echo "KEY_ALIAS=arm32-manager"
+            echo "KEY_PASSWORD=$KEY_PASS"
+          } >> gradle.properties
+          keytool -exportcert -alias arm32-manager -keystore arm32-manager.jks \
+            -storepass "$STORE_PASS" -file /tmp/arm32-manager-cert.der
+          test "0x$(printf '%04x' "$(stat -c%s /tmp/arm32-manager-cert.der)")" = "$EXPECTED_CERT_SIZE"
+          test "$(sha256sum /tmp/arm32-manager-cert.der | awk '{print $1}')" = "$EXPECTED_CERT_HASH"
+
+      - name: Build ARM32 ksud
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          LLVM_BIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          ARM_CLANG="$LLVM_BIN/armv7a-linux-androideabi26-clang"
+          test -x "$ARM_CLANG"
+          export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$ARM_CLANG"
+          export CC_armv7_linux_androideabi="$ARM_CLANG"
+          export CXX_armv7_linux_androideabi="${ARM_CLANG}++"
+          export AR_armv7_linux_androideabi="$LLVM_BIN/llvm-ar"
+          export BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi="--sysroot=$LLVM_BIN/../sysroot -I$LLVM_BIN/../sysroot/usr/include/arm-linux-androideabi"
+          cargo build --locked --target armv7-linux-androideabi --release --manifest-path userspace/ksud/Cargo.toml
+          "$LLVM_BIN/llvm-readelf" -h target/armv7-linux-androideabi/release/ksud | grep 'Class:.*ELF32'
+          "$LLVM_BIN/llvm-readelf" -h target/armv7-linux-androideabi/release/ksud | grep 'Machine:.*ARM'
+          mkdir -p manager/app/src/main/jniLibs/armeabi-v7a
+          cp target/armv7-linux-androideabi/release/ksud manager/app/src/main/jniLibs/armeabi-v7a/libksud.so
+
+      - name: Setup Java and Gradle
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build ARM32 manager APK
+        working-directory: manager
+        run: ./gradlew clean assembleRelease -PKSU_PACKAGE_NAME=me.weishu.kernelsu.arm32test -PKSU_NAME="KernelSU ARM32 test"
+
+      - name: Verify APK payload
+        working-directory: manager
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          APK="$(find app/build/outputs/apk/release -type f -name '*.apk' | head -n 1)"
+          test -n "$APK"
+          unzip -l "$APK" | grep 'lib/armeabi-v7a/libksud.so'
+          unzip -p "$APK" lib/armeabi-v7a/libksud.so > /tmp/libksud.so
+          "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -h /tmp/libksud.so | grep 'Class:.*ELF32'
+          "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -h /tmp/libksud.so | grep 'Machine:.*ARM'
+          strings /tmp/libksud.so | grep -F 'android15-6.6_kernelsu.ko'
+
+      - name: Upload APK and ksud
+        uses: actions/upload-artifact@v7
+        with:
+          name: kernelsu-arm32-sigsys-fix
+          path: |
+            manager/app/build/outputs/apk/release/*.apk
+            manager/app/src/main/jniLibs/armeabi-v7a/libksud.so
