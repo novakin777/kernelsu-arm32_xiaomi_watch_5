@@ -25,6 +25,7 @@ APK использует тестовый package ID `me.weishu.kernelsu.arm32te
 - Целевая конфигурация Manager: ARM32 `armeabi-v7a`.
 - Встроенный модуль: ARM64, KMI `android15-6.6`.
 - Изменение syscall table само по себе не означает поддержку любого ARM32 приложения или любого ядра.
+- Установка и работа дополнительных модулей KernelSU через Manager не тестировались.
 - Для других устройств и KMI требуется отдельная адаптация владельцами этих устройств и проверка на соответствующем ядре.
 - Сборка или установка APK не доказывает, что root работает на конкретном устройстве.
 
@@ -32,7 +33,7 @@ APK использует тестовый package ID `me.weishu.kernelsu.arm32te
 
 - [KernelSU upstream](https://github.com/tiann/KernelSU)
 - [Исходная ветка, от которой сделан форк](https://github.com/Justadeayo/KernelSU)
-- [DFRoot-сборка для Xiaomi Watch 5](https://github.com/novakin777/dfroot-fork)
+- [DFRoot-сборка для Xiaomi Watch 5](https://github.com/novakin777/dfroot-xiaomi-watch-5)
 - [WearBridgeADB](https://github.com/novakin777/WearBridgeADB) — может выполнять команды на часах с root-правами после того, как KernelSU предоставит их приложению WearBridge на часах. Само приложение root не получает.
 
 ## Авторы и лицензия
