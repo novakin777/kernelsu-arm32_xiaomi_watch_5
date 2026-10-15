@@ -1,6 +1,6 @@
 # KernelSU ARM32 for Xiaomi Watch 5
 
-[Русский](README.md)
+[Русский](../README.md)
 
 A [KernelSU](https://github.com/Justadeayo/KernelSU) fork with changes for a 32-bit userspace on the Xiaomi Watch 5 (`blenny`). This is an experimental adaptation, not a universal KernelSU build.
 
@@ -41,7 +41,7 @@ The APK uses the test package ID `me.weishu.kernelsu.arm32test` and is signed fo
 - [novakin777](https://github.com/novakin777) — ARM32 compat changes and maintenance of this branch.
 - [Justadeayo/KernelSU](https://github.com/Justadeayo/KernelSU) and [KernelSU](https://github.com/tiann/KernelSU) — upstream projects; original authors retain attribution for their code.
 
-KernelSU is distributed under the licenses stated in its source files: `kernel/` is GPL-2.0-only, while other components are GPL-3.0-or-later. See [LICENSE](LICENSE) and file headers.
+KernelSU is distributed under the licenses stated in its source files: `kernel/` is GPL-2.0-only, while other components are GPL-3.0-or-later. See [LICENSE](../LICENSE) and file headers.
 
 ## AI assistance
 

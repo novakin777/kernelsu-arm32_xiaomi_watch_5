@@ -1,6 +1,5 @@
 # KernelSU ARM32 для Xiaomi Watch 5
 
-[English](README.en.md)
 
 Форк [KernelSU](https://github.com/Justadeayo/KernelSU) с изменениями для запуска 32-битного userspace на Xiaomi Watch 5 (`blenny`). Это экспериментальная адаптация, а не универсальная сборка KernelSU.
 
