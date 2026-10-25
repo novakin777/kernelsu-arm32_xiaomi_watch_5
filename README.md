@@ -1,47 +1,48 @@
-# KernelSU ARM32 для Xiaomi Watch 5
+# KernelSU ARM32 for Xiaomi Watch 5
 
+[Русский](README.ru.md)
 
-Форк [KernelSU](https://github.com/Justadeayo/KernelSU) с изменениями для запуска 32-битного userspace на Xiaomi Watch 5 (`blenny`). Это экспериментальная адаптация, а не универсальная сборка KernelSU.
+A [KernelSU](https://github.com/Justadeayo/KernelSU) fork with changes for a 32-bit userspace on the Xiaomi Watch 5 (`blenny`). This is an experimental adaptation, not a universal KernelSU build.
 
-## Что изменено
+## Changes
 
-- Добавлена обработка ARM32 compat syscall table на 64-битном ARM64-ядре: если заголовки ядра не задают `__NR_compat_syscalls`, используется граница `452` (последний номер syscall — `451`).
-- Workflow собирает `ksud` как ELF32 ARM (`armv7-linux-androideabi`) и помещает его в Manager под ABI `armeabi-v7a`.
-- Для тестовой сборки в APK встраивается отдельный ELF64 AArch64 модуль KernelSU для KMI `android15-6.6`.
+- Adds ARM32 compat syscall table handling on a 64-bit ARM64 kernel: when kernel headers do not define `__NR_compat_syscalls`, the bound is set to `452` (the highest syscall number is `451`).
+- The workflow builds `ksud` as ELF32 ARM (`armv7-linux-androideabi`) and packages it in the Manager under `armeabi-v7a`.
+- The test APK embeds a separate ELF64 AArch64 KernelSU module for KMI `android15-6.6`.
 
-ABI приложения и userspace не определяет архитектуру модуля ядра. В частности, 32-битный Manager/`ksud` здесь работает с 64-битным ARM64 модулем. Встроенный модуль предназначен только для соответствующего KMI; он не является образом ядра и не заменяет модуль, собранный под другое устройство или ядро.
+The app/userspace ABI does not determine the kernel module architecture. Here, a 32-bit Manager/`ksud` works with a 64-bit ARM64 module. The embedded module is only for the matching KMI; it is not a kernel image and does not replace a module built for another device or kernel.
 
-## Сборка и получение APK
+## Build and get the APK
 
-В GitHub Actions вручную запустите workflow **Build ARM32 KernelSU Manager** (`workflow_dispatch`). Он собирает модуль для `android15-6.6`, ARM32 `ksud` и тестовый APK. После успешного запуска скачайте artifact `kernelsu-arm32-sigsys-fix` со страницы Actions.
+In GitHub Actions, manually run **Build ARM32 KernelSU Manager** (`workflow_dispatch`). It builds the `android15-6.6` module, ARM32 `ksud`, and the test APK. After a successful run, download the `kernelsu-arm32-sigsys-fix` artifact from the Actions page.
 
-Готовую сборку также можно скачать на странице [Releases](https://github.com/novakin777/kernelsu-arm32_xiaomi_watch_5/releases).
+Published builds are also available on the [Releases](https://github.com/novakin777/kernelsu-arm32_xiaomi_watch_5/releases) page.
 
-APK использует тестовый package ID `me.weishu.kernelsu.arm32test` и подписывается для тестовых сборок. Установка APK с другой подписью поверх уже установленной сборки может потребовать удалить прежнее приложение.
+The APK uses the test package ID `me.weishu.kernelsu.arm32test` and is signed for test builds. Installing an APK signed with a different key over an existing build may require uninstalling the previous app first.
 
-## Совместимость и ограничения
+## Compatibility and limits
 
-- Целевая конфигурация Manager: ARM32 `armeabi-v7a`.
-- Встроенный модуль: ARM64, KMI `android15-6.6`.
-- Изменение syscall table само по себе не означает поддержку любого ARM32 приложения или любого ядра.
-- Установка и работа дополнительных модулей KernelSU через Manager не тестировались.
-- Для других устройств и KMI требуется отдельная адаптация владельцами этих устройств и проверка на соответствующем ядре.
-- Сборка или установка APK не доказывает, что root работает на конкретном устройстве.
+- Manager target: ARM32 `armeabi-v7a`.
+- Embedded module: ARM64, KMI `android15-6.6`.
+- The syscall table change alone does not imply support for every ARM32 app or every kernel.
+- Installing and using additional KernelSU modules through the Manager has not been tested.
+- Other devices and KMIs require adaptation by their owners and validation on the corresponding kernel.
+- Building or installing the APK does not prove that root works on a particular device.
 
-## Связанные проекты
+## Related projects
 
 - [KernelSU upstream](https://github.com/tiann/KernelSU)
-- [Исходная ветка, от которой сделан форк](https://github.com/Justadeayo/KernelSU)
-- [DFRoot-сборка для Xiaomi Watch 5](https://github.com/novakin777/dfroot-xiaomi-watch-5)
-- [WearBridgeADB](https://github.com/novakin777/WearBridgeADB) — может выполнять команды на часах с root-правами после того, как KernelSU предоставит их приложению WearBridge на часах. Само приложение root не получает.
+- [KernelSU source fork](https://github.com/Justadeayo/KernelSU)
+- [DFRoot build for Xiaomi Watch 5](https://github.com/novakin777/dfroot-xiaomi-watch-5)
+- [WearBridgeADB](https://github.com/novakin777/WearBridgeADB) can run commands on the watch with root privileges after KernelSU grants root to the WearBridge app on the watch. WearBridge does not obtain root by itself.
 
-## Авторы и лицензия
+## Authors and license
 
-- [novakin777](https://github.com/novakin777) — изменения ARM32 compat и сопровождение этой ветки.
-- [Justadeayo/KernelSU](https://github.com/Justadeayo/KernelSU) и [KernelSU](https://github.com/tiann/KernelSU) — исходные проекты; авторство исходного кода сохраняется за его авторами.
+- [novakin777](https://github.com/novakin777) — ARM32 compat changes and maintenance of this branch.
+- [Justadeayo/KernelSU](https://github.com/Justadeayo/KernelSU) and [KernelSU](https://github.com/tiann/KernelSU) — upstream projects; original authors retain attribution for their code.
 
-KernelSU распространяется на условиях лицензий, указанных в исходных файлах: код `kernel/` — GPL-2.0-only, остальные компоненты — GPL-3.0-or-later. См. [LICENSE](LICENSE) и заголовки файлов.
+KernelSU is distributed under the licenses stated in its source files: `kernel/` is GPL-2.0-only, while other components are GPL-3.0-or-later. See [LICENSE](LICENSE) and file headers.
 
-## Использование ИИ
+## AI assistance
 
-При подготовке изменений кода и документации использовались инструменты ИИ.
+AI tools were used to assist with code changes and documentation.
