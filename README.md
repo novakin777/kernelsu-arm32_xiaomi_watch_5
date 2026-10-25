@@ -28,6 +28,7 @@ The APK uses the test package ID `me.weishu.kernelsu.arm32test` and is signed fo
 - Installing and using additional KernelSU modules through the Manager has not been tested.
 - Other devices and KMIs require adaptation by their owners and validation on the corresponding kernel.
 - Building or installing the APK does not prove that root works on a particular device.
+- The DFRoot + this KernelSU ARM32 build combination was successfully verified on the global Xiaomi Watch 5 (Android 16, OS3.0.3.70.WO61WMIXM, locked bootloader); root was independently confirmed as `uid=0(root)`.
 
 ## Related projects
 
